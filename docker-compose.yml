@@ -7,11 +7,26 @@ services:
     environment:
       POSTGRES_USER: neda.z
       POSTGRES_PASSWORD: nz2003nz
-      POSTGRES_DB: banking-system
+      POSTGRES_DB: banking_system
     ports:
       - "5432:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - ./tables.sql:/docker-entrypoint-initdb.d/tables.sql
+      - postgres-data:/var/lib/postgresql/dat
+
+  app:
+    build: .
+    container_name: app
+    depends_on:
+      - postgres
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: neda.z
+      DB_PASSWORD: nz2003nz
+      DB_NAME: banking_system
+    ports:
+      - "8080:8080" 
 
 volumes:
   postgres-data:

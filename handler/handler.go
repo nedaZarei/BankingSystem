@@ -59,24 +59,6 @@ func Register() {
 	fmt.Println("registered successfully!")
 }
 
-func Login() {
-	reader := bufio.NewReader(os.Stdin)
-
-	fmt.Print("Username: ")
-	username, _ := reader.ReadString('\n')
-	username = trimInput(username)
-
-	fmt.Print("Password: ")
-	password, _ := reader.ReadString('\n')
-	password = trimInput(password)
-
-	if err := db.Login(username, password); err != nil {
-		fmt.Println("login failed:", err)
-	} else {
-		fmt.Println("logged-in successfully!")
-	}
-}
-
 // to trim input strings
 func trimInput(input string) string {
 	return strings.TrimSpace(input)
