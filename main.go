@@ -27,9 +27,13 @@ func main() {
 	}
 	db.CreateBranch(branch)
 
-	employee := &model.Employee{
+	employeeLogin := &model.EmployeeLogin{
 		Username:   "rossbenson",
 		Password:   "password",
+		EmployeeID: 0, //will be set by database
+	}
+
+	employeeDetails := &model.EmployeeDetails{
 		FirstName:  "ross",
 		LastName:   "benson",
 		Position:   "teller",
@@ -37,21 +41,29 @@ func main() {
 		Salary:     50000,
 		BranchID:   1,
 	}
-	db.RegisterEmployee(employee)
+	db.RegisterEmployee(employeeLogin, employeeDetails)
 
-	customer := &model.Customer{
-		Username:     "eddiebooker",
-		Password:     "password2627",
+	// Create customer records
+	customerLogin := &model.CustomerLogin{
+		Username:   "eddiebooker",
+		Password:   "password2627",
+		CustomerID: 0, //will be set by database
+	}
+
+	customerEmail := &model.CustomerEmail{
+		Email: "eddiebooker@gmail.com",
+	}
+
+	customerDetails := &model.CustomerDetails{
 		FirstName:    "eddie",
 		LastName:     "booker",
 		BirthDate:    "1990-01-01",
 		PhoneNumber:  "1234567890",
-		Email:        "eddiebooker@gmail.com",
 		Address:      "3202 Trails end road",
 		CustomerType: "Individual",
 		BankID:       1,
 	}
-	db.RegisterCostumer(customer)
+	db.RegisterCustomer(customerLogin, customerEmail, customerDetails)
 
 	customer, err := db.LoginCustomer("eddiebooker", "password2627")
 	if err != nil {
@@ -59,8 +71,12 @@ func main() {
 	}
 	fmt.Printf("logged in customer: %+v\n", customer)
 
-	account := &model.Account{
-		AccountNumber:   "1234567890",
+	accountNumber := &model.AccountNumber{
+		AccountNumber: "1234567890",
+		AccountID:     0, //will be set by database
+	}
+
+	accountDetails := &model.AccountDetails{
 		AccountType:     "Savings",
 		AccountPassword: "passpass",
 		Balance:         1000,
@@ -68,9 +84,9 @@ func main() {
 		OpenDate:        "2025-01-01",
 		CustomerID:      1,
 	}
-	db.CreateAccount(account)
+	db.CreateAccount(accountNumber, accountDetails)
 
-	fmt.Println("getting the costumer 1 account:")
+	fmt.Println("getting the customer 1 account:")
 	db.GetAccount("1234567890", "passpass")
 
 	transaction := &model.Transaction{
@@ -82,11 +98,10 @@ func main() {
 	}
 	db.CreateTransaction(transaction)
 
-	// a simple HTTP server to keep the application running
+	//to keep the app running
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Banking System Server")
 	})
-
 	fmt.Println("Starting server on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

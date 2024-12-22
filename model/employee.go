@@ -1,9 +1,13 @@
 package model
 
-type Employee struct {
+type EmployeeLogin struct {
+	Username   string `db:"username"`
+	Password   string `db:"password"`
+	EmployeeID int    `db:"employee_id"`
+}
+
+type EmployeeDetails struct {
 	EmployeeID int     `db:"employee_id"`
-	Username   string  `db:"username"`
-	Password   string  `db:"password"`
 	FirstName  string  `db:"first_name"`
 	LastName   string  `db:"last_name"`
 	Position   string  `db:"position"`

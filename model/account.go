@@ -1,8 +1,12 @@
 package model
 
-type Account struct {
+type AccountNumber struct {
+	AccountNumber string `db:"account_number"`
+	AccountID     int    `db:"account_id"`
+}
+
+type AccountDetails struct {
 	AccountID       int     `db:"account_id"`
-	AccountNumber   string  `db:"account_number"`
 	AccountType     string  `db:"account_type"`
 	AccountPassword string  `db:"account_password"`
 	Balance         float64 `db:"balance"`
