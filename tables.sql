@@ -56,7 +56,7 @@ CREATE TABLE customer_details (
     birth_date DATE NOT NULL,
     phone_number VARCHAR(255) NOT NULL,
     address TEXT NOT NULL,
-    customer_type VARCHAR(255) NOT NULL CHECK (customer_type IN ('Individual', 'Corporate')),
+    customer_type VARCHAR(255) NOT NULL CHECK (customer_type IN ('Natural', 'Legal')),
     bank_id INTEGER NOT NULL,
     PRIMARY KEY (customer_id),
     CONSTRAINT customer_bank_id_foreign FOREIGN KEY (bank_id) REFERENCES bank (bank_id),
@@ -73,7 +73,7 @@ CREATE TABLE account_numbers (
 CREATE TABLE account_details (
     account_id SERIAL NOT NULL,
     customer_id INTEGER NOT NULL,
-    account_type VARCHAR(255) NOT NULL CHECK (account_type IN ('Savings', 'Checking')),
+    account_type VARCHAR(255) NOT NULL CHECK (account_type IN ('Savings', 'Checking', 'Deposit')),
     account_password VARCHAR(255) NOT NULL,
     balance DECIMAL(15, 2) NOT NULL DEFAULT 0.00 CHECK (balance >= 0),
     account_status VARCHAR(255) NOT NULL CHECK (account_status IN ('Active', 'Closed', 'Suspended')) DEFAULT 'Active',

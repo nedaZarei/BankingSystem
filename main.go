@@ -43,43 +43,42 @@ func main() {
 	}
 	db.RegisterEmployee(employeeLogin, employeeDetails)
 
-	// Create customer records
 	customerLogin := &model.CustomerLogin{
-		Username:   "eddiebooker",
+		Username:   "davidmills",
 		Password:   "password2627",
 		CustomerID: 0, //will be set by database
 	}
 
 	customerEmail := &model.CustomerEmail{
-		Email: "eddiebooker@gmail.com",
+		Email: "davidmillss8@gmail.com",
 	}
 
 	customerDetails := &model.CustomerDetails{
-		FirstName:    "eddie",
-		LastName:     "booker",
-		BirthDate:    "1990-01-01",
-		PhoneNumber:  "1234567890",
-		Address:      "3202 Trails end road",
-		CustomerType: "Individual",
+		FirstName:    "david",
+		LastName:     "mills",
+		BirthDate:    "1985-11-02",
+		PhoneNumber:  "214555123",
+		Address:      "12 main st",
+		CustomerType: "Natural", //haghighi
 		BankID:       1,
 	}
 	db.RegisterCustomer(customerLogin, customerEmail, customerDetails)
 
-	customer, err := db.LoginCustomer("eddiebooker", "password2627")
+	customer, err := db.LoginCustomer("davidmills", "password2627")
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("logged in customer: %+v\n", customer)
 
 	accountNumber := &model.AccountNumber{
-		AccountNumber: "1234567890",
+		AccountNumber: "1921072918",
 		AccountID:     0, //will be set by database
 	}
 
 	accountDetails := &model.AccountDetails{
-		AccountType:     "Savings",
-		AccountPassword: "passpass",
-		Balance:         1000,
+		AccountType:     "Deposit",
+		AccountPassword: "1111",
+		Balance:         5000,
 		AccountStatus:   "Active",
 		OpenDate:        "2025-01-01",
 		CustomerID:      1,
@@ -87,16 +86,7 @@ func main() {
 	db.CreateAccount(accountNumber, accountDetails)
 
 	fmt.Println("getting the customer 1 account:")
-	db.GetAccount("1234567890", "passpass")
-
-	transaction := &model.Transaction{
-		SourceAccountID:      1,
-		DestinationAccountID: nil,
-		Amount:               1000,
-		TransactionType:      "Deposit",
-		TransactionDate:      "2025-01-01",
-	}
-	db.CreateTransaction(transaction)
+	db.GetAccount("1921072918", "1111")
 
 	//to keep the app running
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
