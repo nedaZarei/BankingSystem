@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/nedaZarei/BankingSystem/model"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func CreateAccount(number *model.AccountNumber, details *model.AccountDetails) error {
@@ -26,9 +27,16 @@ func CreateAccount(number *model.AccountNumber, details *model.AccountDetails) e
 		return fmt.Errorf("failed to insert account number: %w", err)
 	}
 
+	//hashing password before storing it
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(details.AccountPassword), bcrypt.DefaultCost)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
 	_, err = tx.Exec(
 		"INSERT INTO account_details (account_id, account_type, account_password, balance, account_status, open_date, close_date, customer_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-		details.AccountID, details.AccountType, details.AccountPassword, details.Balance,
+		details.AccountID, details.AccountType, hashedPassword, details.Balance,
 		details.AccountStatus, details.OpenDate, details.CloseDate, details.CustomerID)
 	if err != nil {
 		tx.Rollback()
