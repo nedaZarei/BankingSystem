@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/nedaZarei/BankingSystem/model"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func RegisterEmployee(login *model.EmployeeLogin, details *model.EmployeeDetails) {
@@ -20,9 +21,15 @@ func RegisterEmployee(login *model.EmployeeLogin, details *model.EmployeeDetails
 		log.Fatal(err)
 	}
 
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(login.Password), bcrypt.DefaultCost)
+	if err != nil {
+		tx.Rollback()
+		log.Fatal("failed to hash password: ", err)
+	}
+
 	err = tx.QueryRow(
 		"INSERT INTO employee_login (username, password) VALUES ($1, $2) RETURNING employee_id",
-		login.Username, login.Password).Scan(&details.EmployeeID)
+		login.Username, hashedPassword).Scan(&details.EmployeeID)
 	if err != nil {
 		tx.Rollback()
 		log.Fatal(err)
@@ -41,21 +48,20 @@ func RegisterEmployee(login *model.EmployeeLogin, details *model.EmployeeDetails
 		log.Fatal(err)
 	}
 
-	fmt.Println("successfully registered employee")
+	fmt.Println("Successfully registered employee")
 }
 
 func LoginEmployee(username, password string) (*model.EmployeeDetails, error) {
 	if err := db.Ping(); err != nil {
 		return nil, err
 	}
-
+	var hashedPassword string
 	var employeeID int
-	//verifing login credentials
+
+	//retrieving the hashed password and employee ID
 	err := db.QueryRow(
-		`SELECT employee_id 
-         FROM employee_login 
-         WHERE username = $1 AND password = $2`,
-		username, password).Scan(&employeeID)
+		"SELECT password, employee_id FROM employee_login WHERE username = $1",
+		username).Scan(&hashedPassword, &employeeID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, errors.New("invalid username or password")
@@ -63,12 +69,14 @@ func LoginEmployee(username, password string) (*model.EmployeeDetails, error) {
 		return nil, err
 	}
 
+	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
+		return nil, errors.New("invalid username or password")
+	}
+
 	var details model.EmployeeDetails
+
 	err = db.QueryRow(
-		`SELECT employee_id, first_name, last_name, position, 
-                department, salary, branch_id 
-         FROM employee_details 
-         WHERE employee_id = $1`,
+		"SELECT employee_id, first_name, last_name, position, department, salary, branch_id FROM employee_details WHERE employee_id = $1",
 		employeeID).Scan(
 		&details.EmployeeID, &details.FirstName, &details.LastName,
 		&details.Position, &details.Department, &details.Salary, &details.BranchID)
@@ -92,11 +100,17 @@ func UpdateEmployee(employeeID int, updates map[string]interface{}) error {
 	loginUpdates := make(map[string]interface{})
 	detailsUpdates := make(map[string]interface{})
 
-	//sorting updates into appropriate maps
 	for key, value := range updates {
 		switch key {
-		case "username", "password":
+		case "username":
 			loginUpdates[key] = value
+		case "password":
+			hashedPassword, err := bcrypt.GenerateFromPassword([]byte(value.(string)), bcrypt.DefaultCost)
+			if err != nil {
+				tx.Rollback()
+				return fmt.Errorf("failed to hash password: %v", err)
+			}
+			loginUpdates[key] = hashedPassword
 		case "first_name", "last_name", "position", "department", "salary", "branch_id":
 			detailsUpdates[key] = value
 		}
@@ -106,15 +120,15 @@ func UpdateEmployee(employeeID int, updates map[string]interface{}) error {
 		query := "UPDATE employee_login SET "
 		values := []interface{}{employeeID}
 		paramCount := 2
-		updates_arr := []string{}
+		updatesArr := []string{}
 
 		for key, value := range loginUpdates {
-			updates_arr = append(updates_arr, fmt.Sprintf("%s = $%d", key, paramCount))
+			updatesArr = append(updatesArr, fmt.Sprintf("%s = $%d", key, paramCount))
 			values = append(values, value)
 			paramCount++
 		}
 
-		query += strings.Join(updates_arr, ", ")
+		query += strings.Join(updatesArr, ", ")
 		query += " WHERE employee_id = $1"
 
 		_, err = tx.Exec(query, values...)
@@ -128,15 +142,15 @@ func UpdateEmployee(employeeID int, updates map[string]interface{}) error {
 		query := "UPDATE employee_details SET "
 		values := []interface{}{employeeID}
 		paramCount := 2
-		updates_arr := []string{}
+		updatesArr := []string{}
 
 		for key, value := range detailsUpdates {
-			updates_arr = append(updates_arr, fmt.Sprintf("%s = $%d", key, paramCount))
+			updatesArr = append(updatesArr, fmt.Sprintf("%s = $%d", key, paramCount))
 			values = append(values, value)
 			paramCount++
 		}
 
-		query += strings.Join(updates_arr, ", ")
+		query += strings.Join(updatesArr, ", ")
 		query += " WHERE employee_id = $1"
 
 		_, err = tx.Exec(query, values...)

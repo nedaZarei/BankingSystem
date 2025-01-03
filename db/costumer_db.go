@@ -1,28 +1,35 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
-	"log"
 
 	"github.com/nedaZarei/BankingSystem/model"
+	"golang.org/x/crypto/bcrypt"
 )
 
-func RegisterCustomer(login *model.CustomerLogin, email *model.CustomerEmail, details *model.CustomerDetails) {
+func RegisterCustomer(login *model.CustomerLogin, email *model.CustomerEmail, details *model.CustomerDetails) error {
 	if err := db.Ping(); err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	//hashing password before storing it
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(login.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
 	}
 
 	tx, err := db.Begin()
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
 	err = tx.QueryRow(
 		"INSERT INTO customer_login (username, password) VALUES ($1, $2) RETURNING customer_id",
-		login.Username, login.Password).Scan(&details.CustomerID)
+		login.Username, hashedPassword).Scan(&details.CustomerID)
 	if err != nil {
 		tx.Rollback()
-		log.Fatal(err)
+		return fmt.Errorf("failed to insert customer login: %w", err)
 	}
 
 	email.CustomerID = details.CustomerID
@@ -32,7 +39,7 @@ func RegisterCustomer(login *model.CustomerLogin, email *model.CustomerEmail, de
 		email.Email, email.CustomerID)
 	if err != nil {
 		tx.Rollback()
-		log.Fatal(err)
+		return fmt.Errorf("failed to insert customer email: %w", err)
 	}
 
 	_, err = tx.Exec(
@@ -40,38 +47,52 @@ func RegisterCustomer(login *model.CustomerLogin, email *model.CustomerEmail, de
 		details.CustomerID, details.FirstName, details.LastName, details.BirthDate, details.PhoneNumber, details.Address, details.CustomerType, details.BankID)
 	if err != nil {
 		tx.Rollback()
-		log.Fatal(err)
+		return fmt.Errorf("failed to insert customer details: %w", err)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		log.Fatal(err)
+	//committing transaction
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	fmt.Println("successfully registered customer")
+	fmt.Println("Successfully registered customer")
+	return nil
 }
 
 func LoginCustomer(username, password string) (*model.CustomerDetails, error) {
 	if err := db.Ping(); err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
+	var hashedPassword string
 	var customerID int
+
+	//retrieving hashed password and customer id
 	err := db.QueryRow(
-		"SELECT customer_id FROM customer_login WHERE username = $1 AND password = $2",
-		username, password).Scan(&customerID)
-	if err != nil {
-		return nil, err
+		"SELECT password, customer_id FROM customer_login WHERE username = $1",
+		username).Scan(&hashedPassword, &customerID)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("invalid username or password")
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to retrieve customer login: %w", err)
+	}
+
+	//compering given password with hashed password
+	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password)); err != nil {
+		return nil, fmt.Errorf("invalid username or password")
 	}
 
 	var details model.CustomerDetails
+
 	err = db.QueryRow(
 		"SELECT customer_id, first_name, last_name, birth_date, phone_number, address, customer_type, bank_id FROM customer_details WHERE customer_id = $1",
 		customerID).Scan(
 		&details.CustomerID, &details.FirstName, &details.LastName, &details.BirthDate,
 		&details.PhoneNumber, &details.Address, &details.CustomerType, &details.BankID)
-	if err != nil {
-		return nil, err
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("customer details not found")
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to retrieve customer details: %w", err)
 	}
 
 	return &details, nil
@@ -79,12 +100,12 @@ func LoginCustomer(username, password string) (*model.CustomerDetails, error) {
 
 func UpdateCustomer(details *model.CustomerDetails, email string) error {
 	if err := db.Ping(); err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 
 	tx, err := db.Begin()
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
 	_, err = tx.Exec(
@@ -92,7 +113,7 @@ func UpdateCustomer(details *model.CustomerDetails, email string) error {
 		details.FirstName, details.LastName, details.BirthDate, details.PhoneNumber, details.Address, details.CustomerType, details.BankID, details.CustomerID)
 	if err != nil {
 		tx.Rollback()
-		log.Fatal(err)
+		return fmt.Errorf("failed to update customer details: %w", err)
 	}
 
 	_, err = tx.Exec(
@@ -100,51 +121,49 @@ func UpdateCustomer(details *model.CustomerDetails, email string) error {
 		email, details.CustomerID)
 	if err != nil {
 		tx.Rollback()
-		log.Fatal(err)
+		return fmt.Errorf("failed to update customer email: %w", err)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		log.Fatal(err)
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	fmt.Println("successfully updated customer")
+	fmt.Println("Successfully updated customer")
 	return nil
 }
 
 func DeleteCustomer(customerID int) error {
 	if err := db.Ping(); err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 
 	tx, err := db.Begin()
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
 	_, err = tx.Exec("DELETE FROM customer_email WHERE customer_id = $1", customerID)
 	if err != nil {
 		tx.Rollback()
-		log.Fatal(err)
+		return fmt.Errorf("failed to delete customer email: %w", err)
 	}
 
 	_, err = tx.Exec("DELETE FROM customer_details WHERE customer_id = $1", customerID)
 	if err != nil {
 		tx.Rollback()
-		log.Fatal(err)
+		return fmt.Errorf("failed to delete customer details: %w", err)
 	}
 
 	_, err = tx.Exec("DELETE FROM customer_login WHERE customer_id = $1", customerID)
 	if err != nil {
 		tx.Rollback()
-		log.Fatal(err)
+		return fmt.Errorf("failed to delete customer login: %w", err)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		log.Fatal(err)
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	fmt.Println("successfully deleted customer")
+	fmt.Println("Successfully deleted customer")
 	return nil
 }

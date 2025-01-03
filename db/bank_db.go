@@ -1,58 +1,76 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
-	"log"
 
 	"github.com/nedaZarei/BankingSystem/model"
 )
 
-func CreateBank(bank *model.Bank) {
+func CreateBank(bank *model.Bank) error {
 	if err := db.Ping(); err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to ping database: %w", err)
 	}
-	_, err := db.Exec("INSERT INTO bank (name, headquarter_address) VALUES ($1, $2)",
-		bank.Name, bank.HeadquarterAddress)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("successfully created bank")
-}
 
-func UpdateBank(bank *model.Bank) {
-	if err := db.Ping(); err != nil {
-		log.Fatal(err)
-	}
-	_, err := db.Exec("UPDATE bank SET name = $1, headquarter_address = $2 WHERE bank_id = $3",
-		bank.Name, bank.HeadquarterAddress, bank.BankID)
+	query := "INSERT INTO bank (name, headquarter_address) VALUES ($1, $2)"
+	_, err := db.Exec(query, bank.Name, bank.HeadquarterAddress)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to insert bank: %w", err)
 	}
-	fmt.Println("successfully updated bank")
+
+	fmt.Println("Successfully created bank")
+	return nil
 }
 
 func GetBank(bankID int) (*model.Bank, error) {
 	if err := db.Ping(); err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
 	var bank model.Bank
-	err := db.QueryRow("SELECT bank_id, name, headquarter_address FROM bank WHERE bank_id = $1",
-		bankID).Scan(&bank.BankID, &bank.Name, &bank.HeadquarterAddress)
-	if err != nil {
-		return nil, err
+	query := "SELECT bank_id, name, headquarter_address FROM bank WHERE bank_id = $1"
+	err := db.QueryRow(query, bankID).Scan(&bank.BankID, &bank.Name, &bank.HeadquarterAddress)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("bank with ID %d not found", bankID)
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to fetch bank: %w", err)
 	}
 
 	return &bank, nil
 }
 
-func DeleteBank(bankID int) {
+func UpdateBank(bank *model.Bank) error {
 	if err := db.Ping(); err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to ping database: %w", err)
 	}
-	_, err := db.Exec("DELETE FROM bank WHERE bank_id = $1", bankID)
+
+	query := "UPDATE bank SET name = $1, headquarter_address = $2 WHERE bank_id = $3"
+	stmt, err := db.Prepare(query)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to prepare statement: %w", err)
 	}
-	fmt.Println("successfully deleted bank")
+	defer stmt.Close()
+
+	_, err = stmt.Exec(bank.Name, bank.HeadquarterAddress, bank.BankID)
+	if err != nil {
+		return fmt.Errorf("failed to update bank: %w", err)
+	}
+
+	fmt.Println("Successfully updated bank")
+	return nil
+}
+
+func DeleteBank(bankID int) error {
+	if err := db.Ping(); err != nil {
+		return fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	query := "DELETE FROM bank WHERE bank_id = $1"
+	_, err := db.Exec(query, bankID)
+	if err != nil {
+		return fmt.Errorf("failed to delete bank: %w", err)
+	}
+
+	fmt.Println("Successfully deleted bank")
+	return nil
 }

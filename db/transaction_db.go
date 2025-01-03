@@ -21,7 +21,7 @@ func CreateTransaction(transaction *model.Transaction) {
 		log.Fatal(err)
 	}
 
-	fmt.Println("successfully created transaction")
+	fmt.Println("Successfully created transaction")
 }
 
 func GetTransaction(transactionID int) (*model.Transaction, error) {
@@ -53,7 +53,6 @@ func UpdateTransaction(transactionID int, updates map[string]interface{}) error 
 
 	transactionUpdates := make(map[string]interface{})
 
-	//sorting updates into appropriate maps
 	for key, value := range updates {
 		switch key {
 		case "source_account_id", "destination_account_id", "amount", "transaction_type", "transaction_date":
@@ -65,15 +64,16 @@ func UpdateTransaction(transactionID int, updates map[string]interface{}) error 
 		query := "UPDATE transaction SET "
 		values := []interface{}{transactionID}
 		paramCount := 2
-		updates_arr := []string{}
+		updatesArr := []string{}
 
+		//building query with parameterized updates
 		for key, value := range transactionUpdates {
-			updates_arr = append(updates_arr, fmt.Sprintf("%s = $%d", key, paramCount))
+			updatesArr = append(updatesArr, fmt.Sprintf("%s = $%d", key, paramCount))
 			values = append(values, value)
 			paramCount++
 		}
 
-		query += strings.Join(updates_arr, ", ")
+		query += strings.Join(updatesArr, ", ")
 		query += " WHERE transaction_id = $1"
 
 		_, err = tx.Exec(query, values...)

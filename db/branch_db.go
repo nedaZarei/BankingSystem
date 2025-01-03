@@ -1,58 +1,70 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
-	"log"
 
 	"github.com/nedaZarei/BankingSystem/model"
 )
 
-func CreateBranch(branch *model.Branch) {
+func CreateBranch(branch *model.Branch) error {
 	if err := db.Ping(); err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to connect to database: %w", err)
 	}
-	_, err := db.Exec("INSERT INTO branch (bank_id, address) VALUES ($1, $2)",
-		branch.BankID, branch.Address)
+
+	query := "INSERT INTO branch (bank_id, address) VALUES ($1, $2)"
+	_, err := db.Exec(query, branch.BankID, branch.Address)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create branch: %w", err)
 	}
+
 	fmt.Println("successfully created branch")
+	return nil
 }
 
 func GetBranch(branchID int) (*model.Branch, error) {
 	if err := db.Ping(); err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
 	var branch model.Branch
-	err := db.QueryRow("SELECT branch_id, bank_id, address FROM branch WHERE branch_id = $1",
-		branchID).Scan(&branch.BranchID, &branch.BankID, &branch.Address)
-	if err != nil {
-		return nil, err
+	query := "SELECT branch_id, bank_id, address FROM branch WHERE branch_id = $1"
+	err := db.QueryRow(query, branchID).Scan(&branch.BranchID, &branch.BankID, &branch.Address)
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("branch with ID %d not found", branchID)
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to fetch branch: %w", err)
 	}
 
 	return &branch, nil
 }
 
-func UpdateBranch(branch *model.Branch) {
+func UpdateBranch(branch *model.Branch) error {
 	if err := db.Ping(); err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to connect to database: %w", err)
 	}
-	_, err := db.Exec("UPDATE branch SET bank_id = $1, address = $2 WHERE branch_id = $3",
-		branch.BankID, branch.Address, branch.BranchID)
+
+	query := "UPDATE branch SET bank_id = $1, address = $2 WHERE branch_id = $3"
+	_, err := db.Exec(query, branch.BankID, branch.Address, branch.BranchID)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to update branch: %w", err)
 	}
+
 	fmt.Println("successfully updated branch")
+	return nil
 }
 
-func DeleteBranch(branchID int) {
+func DeleteBranch(branchID int) error {
 	if err := db.Ping(); err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to connect to database: %w", err)
 	}
-	_, err := db.Exec("DELETE FROM branch WHERE branch_id = $1", branchID)
+
+	query := "DELETE FROM branch WHERE branch_id = $1"
+	_, err := db.Exec(query, branchID)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to delete branch: %w", err)
 	}
+
 	fmt.Println("successfully deleted branch")
+	return nil
 }
